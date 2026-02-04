@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>AndyDuckAI - Spelling Bee 🦆</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Welcome Screen -->
+    <div id="screen-welcome" class="screen active">
+      <div class="duck-container">
+        <div class="duck" id="duck-mascot">🦆</div>
+        <div class="speech-bubble" id="welcome-bubble">
+          <p>Hi there! I'm Andy Duck!</p>
+          <p>Tap me to start your spelling practice!</p>
+        </div>
+      </div>
+      <button class="btn-primary" id="btn-start">
+        Let's Go! 🎉
+      </button>
+    </div>
+
+    <!-- Name Screen -->
+    <div id="screen-name" class="screen">
+      <div class="duck-container">
+        <div class="duck">🦆</div>
+        <div class="speech-bubble">
+          <p>What's your name?</p>
+        </div>
+      </div>
+      <div class="input-area">
+        <button class="btn-voice" id="btn-say-name">
+          🎤 Say Your Name
+        </button>
+        <p class="or-divider">or</p>
+        <input type="text" id="input-name" placeholder="Type your name..." class="text-input">
+        <button class="btn-primary" id="btn-submit-name">
+          That's Me! ✓
+        </button>
+      </div>
+    </div>
+
+    <!-- Set Selection Screen -->
+    <div id="screen-set" class="screen">
+      <div class="duck-container">
+        <div class="duck">🦆</div>
+        <div class="speech-bubble">
+          <p>Hi <span id="student-name-display">friend</span>!</p>
+          <p>Which set do you want to practice?</p>
+        </div>
+      </div>
+      <div class="set-grid" id="set-grid">
+        <!-- Sets will be populated by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Spelling Screen -->
+    <div id="screen-spelling" class="screen">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+        <span class="progress-text" id="progress-text">Word 1 of 5</span>
+      </div>
+      <div class="duck-container">
+        <div class="duck speaking" id="duck-speaking">🦆</div>
+        <div class="speech-bubble large" id="word-bubble">
+          <p class="current-word" id="current-word">apple</p>
+          <button class="btn-repeat" id="btn-repeat">🔊 Say Again</button>
+        </div>
+      </div>
+      <div class="spelling-area">
+        <div class="letters-display" id="letters-display">
+          <!-- Letters will appear here as kid spells -->
+        </div>
+        <button class="btn-voice large" id="btn-spell">
+          🎤 Spell It!
+        </button>
+        <p class="hint-text" id="hint-text"></p>
+      </div>
+    </div>
+
+    <!-- Feedback Screen (shows briefly) -->
+    <div id="screen-feedback" class="screen">
+      <div class="feedback-container" id="feedback-container">
+        <div class="feedback-emoji" id="feedback-emoji">🎉</div>
+        <p class="feedback-text" id="feedback-text">Perfect!</p>
+      </div>
+    </div>
+
+    <!-- Finish Screen -->
+    <div id="screen-finish" class="screen">
+      <div class="duck-container">
+        <div class="duck celebrating">🦆</div>
+        <div class="speech-bubble large">
+          <p class="finish-message" id="finish-message">Amazing job!</p>
+          <p class="finish-subtext">You're a spelling superstar! ⭐</p>
+        </div>
+      </div>
+      <div class="stars-container" id="stars-container">
+        <!-- Stars will be shown here -->
+      </div>
+      <button class="btn-primary" id="btn-again">
+        Practice Again! 🔄
+      </button>
+      <button class="btn-secondary" id="btn-home">
+        Go Home 🏠
+      </button>
+    </div>
+  </div>
+
+  <!-- Audio elements for TTS -->
+  <audio id="audio-word" preload="auto"></audio>
+  <audio id="audio-feedback" preload="auto"></audio>
+
+  <script src="app.js"></script>
+</body>
+</html>

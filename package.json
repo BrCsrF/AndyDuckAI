@@ -1,0 +1,22 @@
+{
+  "name": "andyduck-ai",
+  "version": "0.1.0",
+  "description": "Voice-based spelling test assistant for Andy's School",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "keywords": [
+    "spelling",
+    "education",
+    "kids",
+    "voice",
+    "english"
+  ],
+  "author": "AndyAI",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

@@ -45,11 +45,63 @@ Each set is a JSON file in `wordlists/`:
 
 ## Setup
 
-Coming soon...
+### Prerequisites
+- Node.js 18+
+- npm
+
+### Installation
+```bash
+cd /opt/AndyDuckAI
+npm install
+```
+
+### Run the server
+```bash
+npm start
+```
+
+### Access the app
+- Local: http://localhost:3000
+- iPad: http://<mac-ip>:3000 (same network)
+
+### Add word lists
+Add JSON files to `wordlists/` folder (see format above).
+
+## Project Structure
+
+```
+AndyDuckAI/
+├── app/                # Frontend web app
+│   ├── index.html      # Main HTML
+│   ├── styles.css      # Kid-friendly styles
+│   └── app.js          # App logic
+├── server/             # Backend server
+│   └── index.js        # Express server
+├── wordlists/          # Word sets (JSON)
+├── data/               # Results storage
+├── docs/               # Documentation
+│   └── ARCHITECTURE.md # System design
+└── package.json
+```
 
 ## Status
 
-🚧 In development
+🚧 In development - v0.1.0
+
+### Done
+- [x] Project structure
+- [x] Basic UI design
+- [x] Frontend app (HTML/CSS/JS)
+- [x] Express server
+- [x] Word set loading
+- [x] Results saving
+
+### To Do
+- [ ] Add actual duck mascot image
+- [ ] Server-side Whisper for better voice recognition
+- [ ] Better TTS voice
+- [ ] Admin dashboard for viewing results
+- [ ] Add word lists from Chris
 
 ---
 
