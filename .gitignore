@@ -1,0 +1,21 @@
+# Student results (private)
+data/*.json
+data/*.csv
+data/*.log
+
+# Keep the folder
+!data/.gitkeep
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/

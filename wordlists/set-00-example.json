@@ -1,0 +1,12 @@
+{
+  "set": 0,
+  "name": "Example Set (Delete Me)",
+  "grade": "G1",
+  "words": [
+    { "word": "cat", "hint": "A small pet that meows" },
+    { "word": "dog", "hint": "A pet that barks and wags its tail" },
+    { "word": "sun", "hint": "It shines in the sky during the day" },
+    { "word": "moon", "hint": "You see it at night in the sky" },
+    { "word": "tree", "hint": "A tall plant with leaves" }
+  ]
+}
