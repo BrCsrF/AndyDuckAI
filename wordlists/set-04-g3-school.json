@@ -1,0 +1,12 @@
+{
+  "set": 4,
+  "name": "School Words",
+  "grade": "G3",
+  "words": [
+    {"word": "teacher", "hint": "The person who helps you learn"},
+    {"word": "student", "hint": "Someone who goes to school"},
+    {"word": "pencil", "hint": "You write with this"},
+    {"word": "library", "hint": "A place with lots of books"},
+    {"word": "homework", "hint": "Work you do after school"}
+  ]
+}
