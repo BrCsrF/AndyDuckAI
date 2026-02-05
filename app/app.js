@@ -6,17 +6,20 @@
 // App State
 const state = {
   studentName: '',
+  currentLevel: '',
   currentSet: null,
   currentWordIndex: 0,
   words: [],
   results: [],
   isListening: false,
+  allSets: [], // Cache all sets
 };
 
 // DOM Elements
 const screens = {
   welcome: document.getElementById('screen-welcome'),
   name: document.getElementById('screen-name'),
+  level: document.getElementById('screen-level'),
   set: document.getElementById('screen-set'),
   spelling: document.getElementById('screen-spelling'),
   feedback: document.getElementById('screen-feedback'),
@@ -69,6 +72,20 @@ function setupEventListeners() {
     if (e.key === 'Enter') submitName();
   });
   
+  // Level screen
+  document.querySelectorAll('.level-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const level = card.dataset.level;
+      selectLevel(level);
+    });
+  });
+  
+  // Set screen - back button
+  document.getElementById('btn-back-level').addEventListener('click', () => {
+    showScreen('level');
+    speak("Pick your level!");
+  });
+  
   // Spelling screen
   document.getElementById('btn-spell').addEventListener('click', listenForSpelling);
   document.getElementById('btn-repeat').addEventListener('click', sayCurrentWord);
@@ -77,6 +94,7 @@ function setupEventListeners() {
   document.getElementById('btn-again').addEventListener('click', () => startSet(state.currentSet));
   document.getElementById('btn-home').addEventListener('click', () => {
     state.studentName = '';
+    state.currentLevel = '';
     showScreen('welcome');
   });
 }
@@ -90,18 +108,16 @@ function showScreen(screenName) {
 // Load Word Sets
 async function loadWordSets() {
   try {
-    // For now, load example sets - later this will fetch from server
     const response = await fetch('/api/wordsets');
     if (response.ok) {
-      const sets = await response.json();
-      renderSetGrid(sets);
+      state.allSets = await response.json();
+      console.log(`Loaded ${state.allSets.length} word sets`);
     } else {
-      // Use example data for development
-      renderSetGrid(getExampleSets());
+      state.allSets = getExampleSets();
     }
   } catch (error) {
     console.log('Using example sets (server not available)');
-    renderSetGrid(getExampleSets());
+    state.allSets = getExampleSets();
   }
 }
 
@@ -170,11 +186,20 @@ function submitName() {
   if (name) {
     state.studentName = name;
     document.getElementById('student-name-display').textContent = name;
-    speak(`Hi ${name}! Which set do you want to practice?`);
-    showScreen('set');
+    speak(`Hi ${name}! What's your level?`);
+    showScreen('level');
   } else {
     shake(nameInput);
   }
+}
+
+// Level Selection
+function selectLevel(level) {
+  state.currentLevel = level;
+  document.getElementById('level-display').textContent = level;
+  speak(`${level}! Now pick a set to practice.`);
+  renderSetGrid(state.allSets.filter(s => s.grade === level));
+  showScreen('set');
 }
 
 // Set Selection & Spelling

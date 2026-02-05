@@ -44,15 +44,44 @@
       </div>
     </div>
 
+    <!-- Level Selection Screen -->
+    <div id="screen-level" class="screen">
+      <div class="duck-container">
+        <img src="assets/andy-duck-logo.jpg" alt="Andy Duck" class="duck-img">
+        <div class="speech-bubble">
+          <p>Hi <span id="student-name-display">friend</span>!</p>
+          <p>What's your level?</p>
+        </div>
+      </div>
+      <div class="level-grid" id="level-grid">
+        <div class="level-card" data-level="Starters">
+          <div class="level-icon">🌟</div>
+          <div class="level-name">Starters</div>
+        </div>
+        <div class="level-card" data-level="Movers">
+          <div class="level-icon">🚀</div>
+          <div class="level-name">Movers</div>
+        </div>
+        <div class="level-card" data-level="Flyers">
+          <div class="level-icon">✈️</div>
+          <div class="level-name">Flyers</div>
+        </div>
+        <div class="level-card" data-level="SuperFlyers">
+          <div class="level-icon">🦸</div>
+          <div class="level-name">SuperFlyers</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Set Selection Screen -->
     <div id="screen-set" class="screen">
       <div class="duck-container">
         <img src="assets/andy-duck-logo.jpg" alt="Andy Duck" class="duck-img">
         <div class="speech-bubble">
-          <p>Hi <span id="student-name-display">friend</span>!</p>
-          <p>Which set do you want to practice?</p>
+          <p><span id="level-display">Starters</span> - Pick a set!</p>
         </div>
       </div>
+      <button class="btn-back" id="btn-back-level">← Back to Levels</button>
       <div class="set-grid" id="set-grid">
         <!-- Sets will be populated by JavaScript -->
       </div>
