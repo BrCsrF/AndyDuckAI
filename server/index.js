@@ -7,6 +7,19 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs').promises;
 
+// Optional: OpenAI for TTS
+let openai = null;
+try {
+  const OpenAI = require('openai');
+  // Check if API key is available
+  if (process.env.OPENAI_API_KEY) {
+    openai = new OpenAI();
+    console.log('✓ OpenAI TTS enabled');
+  }
+} catch (e) {
+  console.log('OpenAI not configured, using browser TTS');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -128,6 +141,45 @@ app.get('/api/results', async (req, res) => {
     res.json({ results: filtered });
   } catch (error) {
     res.json({ results: [] });
+  }
+});
+
+// API: Check if TTS is available
+app.get('/api/tts/check', (req, res) => {
+  res.json({ available: !!openai });
+});
+
+// API: Generate TTS audio
+app.post('/api/tts', async (req, res) => {
+  const { text } = req.body;
+  
+  if (!text) {
+    return res.status(400).json({ error: 'Text is required' });
+  }
+  
+  if (!openai) {
+    return res.status(503).json({ error: 'TTS not configured' });
+  }
+  
+  try {
+    // Use OpenAI TTS with a friendly voice
+    const mp3 = await openai.audio.speech.create({
+      model: 'tts-1',
+      voice: 'nova', // Nova is warm and friendly - great for kids
+      input: text,
+      speed: 0.9, // Slightly slower for kids
+    });
+    
+    // Convert to buffer and send
+    const buffer = Buffer.from(await mp3.arrayBuffer());
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': buffer.length,
+    });
+    res.send(buffer);
+  } catch (error) {
+    console.error('TTS error:', error.message);
+    res.status(500).json({ error: 'TTS generation failed' });
   }
 });
 

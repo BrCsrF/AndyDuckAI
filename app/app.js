@@ -446,18 +446,106 @@ function startSpeechRecognition(callback) {
   recognition.start();
 }
 
-// Text-to-Speech
-function speak(text, callback) {
-  // Try browser TTS first
+// Text-to-Speech - Choose best available voice
+let preferredVoice = null;
+let useServerTTS = false; // Set to true if server TTS is available
+
+// Initialize voices
+function initVoices() {
+  const voices = speechSynthesis.getVoices();
+  
+  // Preferred voices (natural sounding) in order of preference
+  const preferredNames = [
+    'Samantha',      // macOS/iOS - very natural
+    'Karen',         // macOS - Australian, clear
+    'Daniel',        // macOS - British, clear
+    'Google US English', // Chrome
+    'Microsoft Zira', // Windows
+    'Alex',          // macOS
+  ];
+  
+  for (const name of preferredNames) {
+    const voice = voices.find(v => v.name.includes(name));
+    if (voice) {
+      preferredVoice = voice;
+      console.log('Using voice:', voice.name);
+      break;
+    }
+  }
+  
+  // If no preferred voice, try to find any English voice
+  if (!preferredVoice) {
+    preferredVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+    console.log('Using fallback voice:', preferredVoice?.name);
+  }
+}
+
+// Load voices when available
+if ('speechSynthesis' in window) {
+  speechSynthesis.onvoiceschanged = initVoices;
+  initVoices(); // Try immediately too
+}
+
+// Check if server TTS is available
+async function checkServerTTS() {
+  try {
+    const response = await fetch('/api/tts/check');
+    if (response.ok) {
+      const data = await response.json();
+      useServerTTS = data.available;
+      console.log('Server TTS available:', useServerTTS);
+    }
+  } catch {
+    useServerTTS = false;
+  }
+}
+checkServerTTS();
+
+async function speak(text, callback) {
+  // Try server TTS first (AI voice)
+  if (useServerTTS) {
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const audio = new Audio(URL.createObjectURL(blob));
+        audio.onended = callback;
+        audio.play();
+        return;
+      }
+    } catch (error) {
+      console.log('Server TTS failed, using browser TTS');
+    }
+  }
+  
+  // Fallback to browser TTS with best available voice
   if ('speechSynthesis' in window) {
+    // Cancel any ongoing speech
+    speechSynthesis.cancel();
+    
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9; // Slightly slower for kids
-    utterance.pitch = 1.1; // Slightly higher for friendliness
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+    
+    utterance.rate = 0.85; // Slower for kids to understand
+    utterance.pitch = 1.0; // Natural pitch
+    utterance.volume = 1.0;
+    
     utterance.onend = callback;
+    utterance.onerror = (e) => {
+      console.error('TTS error:', e);
+      if (callback) callback();
+    };
+    
     speechSynthesis.speak(utterance);
   } else {
-    // Fallback: fetch audio from server
-    // TODO: Implement server-side TTS
     console.log('Speaking:', text);
     if (callback) setTimeout(callback, 1000);
   }
