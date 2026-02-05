@@ -1,0 +1,47 @@
+{
+  "set": 10,
+  "name": "Starters Sem1 Set 1",
+  "grade": "Starters",
+  "words": [
+    {
+      "word": "pen",
+      "hint": ""
+    },
+    {
+      "word": "pencil",
+      "hint": ""
+    },
+    {
+      "word": "eraser",
+      "hint": ""
+    },
+    {
+      "word": "ruler",
+      "hint": ""
+    },
+    {
+      "word": "pencil case",
+      "hint": ""
+    },
+    {
+      "word": "backpack",
+      "hint": ""
+    },
+    {
+      "word": "book",
+      "hint": ""
+    },
+    {
+      "word": "notebook",
+      "hint": ""
+    },
+    {
+      "word": "desk",
+      "hint": ""
+    },
+    {
+      "word": "chair",
+      "hint": ""
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "set": 37,
+  "name": "Starters Sem2 Set 14",
+  "grade": "Starters",
+  "words": [
+    {
+      "word": "wake up",
+      "hint": ""
+    },
+    {
+      "word": "go to school",
+      "hint": ""
+    },
+    {
+      "word": "come home",
+      "hint": ""
+    },
+    {
+      "word": "go to bed",
+      "hint": ""
+    },
+    {
+      "word": "morning",
+      "hint": ""
+    },
+    {
+      "word": "afternoon",
+      "hint": ""
+    },
+    {
+      "word": "evening",
+      "hint": ""
+    },
+    {
+      "word": "night",
+      "hint": ""
+    }
+  ]
+}

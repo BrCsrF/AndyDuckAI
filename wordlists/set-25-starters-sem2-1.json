@@ -1,0 +1,47 @@
+{
+  "set": 25,
+  "name": "Starters Sem2 Set 1",
+  "grade": "Starters",
+  "words": [
+    {
+      "word": "happy",
+      "hint": ""
+    },
+    {
+      "word": "sad",
+      "hint": ""
+    },
+    {
+      "word": "hot",
+      "hint": ""
+    },
+    {
+      "word": "cold",
+      "hint": ""
+    },
+    {
+      "word": "hungry",
+      "hint": ""
+    },
+    {
+      "word": "thirsty",
+      "hint": ""
+    },
+    {
+      "word": "im",
+      "hint": ""
+    },
+    {
+      "word": "hes",
+      "hint": ""
+    },
+    {
+      "word": "shes",
+      "hint": ""
+    },
+    {
+      "word": "isnt",
+      "hint": ""
+    }
+  ]
+}

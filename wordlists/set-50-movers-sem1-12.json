@@ -1,0 +1,39 @@
+{
+  "set": 50,
+  "name": "Movers Sem1 Set 12",
+  "grade": "Movers",
+  "words": [
+    {
+      "word": "wash the car",
+      "hint": ""
+    },
+    {
+      "word": "vacuum the carpet",
+      "hint": ""
+    },
+    {
+      "word": "water the plants",
+      "hint": ""
+    },
+    {
+      "word": "chores",
+      "hint": ""
+    },
+    {
+      "word": "milk the cows",
+      "hint": ""
+    },
+    {
+      "word": "feed the chickens",
+      "hint": ""
+    },
+    {
+      "word": "pick vegetables",
+      "hint": ""
+    },
+    {
+      "word": "collect eggs",
+      "hint": ""
+    }
+  ]
+}
