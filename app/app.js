@@ -163,12 +163,17 @@ function listenForName() {
     btn.classList.remove('listening');
     btn.textContent = '🎤 Say Your Name';
     
-    // Extract name from transcript
-    const name = extractName(transcript);
-    if (name) {
-      document.getElementById('input-name').value = name;
+    if (transcript) {
+      // Extract name from transcript
+      const name = extractName(transcript);
+      if (name) {
+        document.getElementById('input-name').value = name;
+        speak(`Did you say ${name}? Tap the button to confirm!`);
+      }
+    } else {
+      speak("I didn't hear that. Try again or type your name!");
     }
-  });
+  }, { timeout: 4000 });
 }
 
 function extractName(transcript) {
@@ -275,12 +280,18 @@ function listenForSpelling() {
   btn.classList.add('listening');
   btn.textContent = '🎤 Listening...';
   
+  // Give kids more time to spell
   startSpeechRecognition((transcript) => {
     btn.classList.remove('listening');
     btn.textContent = '🎤 Spell It!';
     
-    checkSpelling(transcript);
-  });
+    if (transcript) {
+      checkSpelling(transcript);
+    } else {
+      // No speech detected - prompt to try again
+      speak("I didn't hear that. Tap the button and try again!");
+    }
+  }, { timeout: 8000, forSpelling: true });
 }
 
 function checkSpelling(transcript) {
@@ -312,24 +323,74 @@ function checkSpelling(transcript) {
 }
 
 function extractLetters(transcript) {
-  // Clean up transcript and extract letters
-  const clean = transcript.toUpperCase().replace(/[^A-Z\s-]/g, '');
+  console.log('Raw transcript:', transcript);
   
-  // Try different patterns
-  // "A P P L E" - space separated
-  // "A-P-P-L-E" - dash separated
-  // "A, P, P, L, E" - comma separated
+  // Common phonetic letter names → actual letters
+  const phoneticMap = {
+    'ay': 'A', 'a': 'A', 'eh': 'A',
+    'bee': 'B', 'be': 'B', 'b': 'B',
+    'see': 'C', 'sea': 'C', 'c': 'C', 'si': 'C',
+    'dee': 'D', 'd': 'D', 'di': 'D',
+    'ee': 'E', 'e': 'E',
+    'eff': 'F', 'ef': 'F', 'f': 'F',
+    'gee': 'G', 'g': 'G', 'ji': 'G',
+    'aitch': 'H', 'h': 'H', 'age': 'H', 'ach': 'H',
+    'eye': 'I', 'i': 'I', 'ai': 'I',
+    'jay': 'J', 'j': 'J',
+    'kay': 'K', 'k': 'K', 'ca': 'K',
+    'el': 'L', 'l': 'L', 'ell': 'L',
+    'em': 'M', 'm': 'M',
+    'en': 'N', 'n': 'N',
+    'oh': 'O', 'o': 'O',
+    'pee': 'P', 'p': 'P', 'pi': 'P',
+    'cue': 'Q', 'q': 'Q', 'queue': 'Q', 'kyu': 'Q',
+    'are': 'R', 'r': 'R', 'ar': 'R',
+    'ess': 'S', 's': 'S', 'es': 'S',
+    'tee': 'T', 't': 'T', 'ti': 'T',
+    'you': 'U', 'u': 'U', 'yu': 'U',
+    'vee': 'V', 'v': 'V', 'vi': 'V',
+    'double you': 'W', 'double u': 'W', 'w': 'W', 'dub': 'W',
+    'ex': 'X', 'x': 'X', 'ecks': 'X',
+    'why': 'Y', 'y': 'Y', 'wai': 'Y',
+    'zee': 'Z', 'zed': 'Z', 'z': 'Z', 'zi': 'Z',
+  };
+  
+  // Clean up transcript
+  let clean = transcript.toLowerCase().trim();
+  
+  // Try to match spoken letter names
   let letters = [];
   
-  if (clean.includes(' ')) {
-    letters = clean.split(/\s+/).filter(l => l.length === 1);
-  } else if (clean.includes('-')) {
-    letters = clean.split('-').filter(l => l.length === 1);
-  } else {
-    // Individual characters
-    letters = clean.split('').filter(l => /[A-Z]/.test(l));
+  // Split by common delimiters
+  const parts = clean.split(/[\s,.\-]+/).filter(p => p.length > 0);
+  
+  for (const part of parts) {
+    // Check phonetic map first
+    if (phoneticMap[part]) {
+      letters.push(phoneticMap[part]);
+    } 
+    // Single letter
+    else if (part.length === 1 && /[a-z]/i.test(part)) {
+      letters.push(part.toUpperCase());
+    }
+    // Check if it's a letter name we missed
+    else {
+      // Try partial matches
+      for (const [phonetic, letter] of Object.entries(phoneticMap)) {
+        if (part === phonetic || part.startsWith(phonetic)) {
+          letters.push(letter);
+          break;
+        }
+      }
+    }
   }
   
+  // If no letters found, try extracting single letters from the raw text
+  if (letters.length === 0) {
+    letters = clean.toUpperCase().split('').filter(c => /[A-Z]/.test(c));
+  }
+  
+  console.log('Extracted letters:', letters);
   return letters;
 }
 
@@ -436,39 +497,105 @@ async function saveResults(correct, total) {
 }
 
 // Speech Recognition
-function startSpeechRecognition(callback) {
+let recognitionInstance = null;
+
+function startSpeechRecognition(callback, options = {}) {
+  const { 
+    timeout = 5000,  // Max listening time
+    forSpelling = false 
+  } = options;
+  
+  // Check for support
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    console.log('Speech recognition not supported, using fallback');
-    // TODO: Implement server-side Whisper fallback
-    setTimeout(() => callback(''), 3000);
+    console.log('Speech recognition not supported');
+    alert('Your browser does not support speech recognition. Please use Chrome or Safari.');
+    callback('');
     return;
   }
   
+  // Stop any existing recognition
+  if (recognitionInstance) {
+    try {
+      recognitionInstance.stop();
+    } catch (e) {}
+  }
+  
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const recognition = new SpeechRecognition();
+  recognitionInstance = new SpeechRecognition();
   
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  recognition.lang = 'en-US';
-  recognition.maxAlternatives = 1;
+  // Settings optimized for spelling
+  recognitionInstance.continuous = false;
+  recognitionInstance.interimResults = true; // Show interim results
+  recognitionInstance.lang = 'en-US';
+  recognitionInstance.maxAlternatives = 3; // Get alternatives for better matching
   
-  recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    console.log('Heard:', transcript);
-    callback(transcript);
+  let finalTranscript = '';
+  let timeoutId = null;
+  
+  // Auto-stop after timeout
+  timeoutId = setTimeout(() => {
+    console.log('Recognition timeout');
+    try {
+      recognitionInstance.stop();
+    } catch (e) {}
+    if (finalTranscript) {
+      callback(finalTranscript);
+    } else {
+      callback('');
+    }
+  }, timeout);
+  
+  recognitionInstance.onresult = (event) => {
+    let interimTranscript = '';
+    
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript + ' ';
+        console.log('Final:', transcript);
+        
+        // For spelling, also log alternatives
+        if (forSpelling && event.results[i].length > 1) {
+          for (let j = 1; j < event.results[i].length; j++) {
+            console.log('Alt ' + j + ':', event.results[i][j].transcript);
+          }
+        }
+      } else {
+        interimTranscript += transcript;
+        console.log('Interim:', transcript);
+      }
+    }
   };
   
-  recognition.onerror = (event) => {
+  recognitionInstance.onerror = (event) => {
     console.error('Speech recognition error:', event.error);
-    callback('');
+    clearTimeout(timeoutId);
+    
+    if (event.error === 'not-allowed') {
+      alert('Microphone access denied. Please allow microphone access and try again.');
+    } else if (event.error === 'no-speech') {
+      console.log('No speech detected');
+    }
+    
+    callback(finalTranscript || '');
   };
   
-  recognition.onend = () => {
+  recognitionInstance.onend = () => {
+    clearTimeout(timeoutId);
     state.isListening = false;
+    console.log('Recognition ended, final:', finalTranscript);
+    callback(finalTranscript.trim());
   };
   
+  // Start listening
   state.isListening = true;
-  recognition.start();
+  try {
+    recognitionInstance.start();
+    console.log('Recognition started');
+  } catch (error) {
+    console.error('Failed to start recognition:', error);
+    callback('');
+  }
 }
 
 // Text-to-Speech - Choose best available voice
