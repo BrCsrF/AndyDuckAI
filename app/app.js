@@ -5,19 +5,79 @@
 
 // App State
 const state = {
+  accessPin: '',  // Store verified PIN
+  currentBranch: '', // MQ, MS, MT, JK, YS, XS
+  currentStudyYear: 11401, // Default: 114學年上學期
   studentName: '',
-  currentLevel: '',
+  studentLevel: '', // Starters, Movers, Flyers, SuperFlyers
+  currentLevel: '',  // Grade level for UI (G1, G2, etc.)
   currentSet: null,
   currentWordIndex: 0,
+  currentAttempt: 0,  // Track attempts per word (max 3)
   words: [],
   results: [],
   isListening: false,
   allSets: [], // Cache all sets
+  allStudents: [], // Cache all students
 };
+
+// Branch names
+const BRANCHES = {
+  'MQ': '民權分校',
+  'MS': '民生分校',
+  'MT': '民族分校',
+  'JK': '健康分校',
+  'YS': '延壽分校',
+  'XS': '西松分校'
+};
+
+// Format study year for display (11401 → 114上)
+function formatStudyYear(year) {
+  const y = String(year);
+  if (y.length === 5) {
+    const yearNum = y.substring(0, 3);
+    const semester = y.substring(3) === '01' ? '上' : '下';
+    return `${yearNum}${semester}`;
+  }
+  return y;
+}
+
+// Get semester from study year (11401 → "Sem1", 11402 → "Sem2")
+function getSemesterFromYear(year) {
+  const y = String(year);
+  if (y.length === 5) {
+    return y.substring(3) === '01' ? 'Sem1' : 'Sem2';
+  }
+  return 'Sem1'; // Default
+}
+
+// Filter sets by level and semester
+function filterSets(level) {
+  const semester = getSemesterFromYear(state.currentStudyYear);
+  return state.allSets.filter(s => {
+    // Match level (grade field or level field)
+    const levelMatch = s.level === level || s.grade === level;
+    // Match semester (check if name contains Sem1 or Sem2)
+    const semesterMatch = s.name && s.name.includes(semester);
+    return levelMatch && semesterMatch;
+  });
+}
+
+// API helper with PIN
+async function apiCall(url, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Access-Pin': state.accessPin,
+    ...options.headers
+  };
+  const response = await fetch(url, { ...options, headers });
+  return response;
+}
 
 // DOM Elements
 const screens = {
-  welcome: document.getElementById('screen-welcome'),
+  pin: document.getElementById('screen-pin'),
+  branch: document.getElementById('screen-branch'),
   name: document.getElementById('screen-name'),
   level: document.getElementById('screen-level'),
   set: document.getElementById('screen-set'),
@@ -60,17 +120,84 @@ function init() {
   console.log('AndyDuckAI initialized! 🦆');
 }
 
-function setupEventListeners() {
-  // Welcome screen
-  document.getElementById('btn-start').addEventListener('click', () => showScreen('name'));
-  document.getElementById('duck-mascot').addEventListener('click', () => showScreen('name'));
+async function submitPin() {
+  const pinInput = document.getElementById('input-pin');
+  const pinError = document.getElementById('pin-error');
+  const pin = pinInput.value.trim();
   
-  // Name screen
-  document.getElementById('btn-say-name').addEventListener('click', listenForName);
+  if (!pin) {
+    pinInput.focus();
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/verify-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin })
+    });
+    
+    if (response.ok) {
+      state.accessPin = pin;
+      pinError.style.display = 'none';
+      showScreen('branch'); // Go to branch selection first
+      loadWordSets(); // Load word sets after PIN verified
+    } else {
+      pinError.style.display = 'block';
+      pinInput.value = '';
+      pinInput.focus();
+    }
+  } catch (error) {
+    console.error('PIN verification error:', error);
+    pinError.textContent = 'Connection error. Try again.';
+    pinError.style.display = 'block';
+  }
+}
+
+function setupEventListeners() {
+  // PIN screen
+  document.getElementById('btn-submit-pin').addEventListener('click', submitPin);
+  document.getElementById('input-pin').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') submitPin();
+  });
+  
+  // Year selection
+  document.querySelectorAll('.year-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.year-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.currentStudyYear = parseInt(btn.dataset.year);
+    });
+  });
+  
+  // Branch selection
+  document.querySelectorAll('.branch-card').forEach(card => {
+    card.addEventListener('click', () => {
+      selectBranch(card.dataset.branch);
+    });
+  });
+  
+  // Name screen - tap duck to show hint
+  document.getElementById('duck-mascot').addEventListener('click', () => {
+    speak("Tap the big button and say your name!");
+  });
+  
+  // Name screen - tap to start listening
+  document.getElementById('btn-say-name').addEventListener('click', () => {
+    hideHeardName();
+    listenForName();
+  });
   document.getElementById('btn-submit-name').addEventListener('click', submitName);
-  document.getElementById('input-name').addEventListener('keypress', (e) => {
+  const nameInput = document.getElementById('input-name');
+  nameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') submitName();
   });
+  // Validate name input: A-Z only, max 20
+  nameInput.addEventListener('input', (e) => {
+    e.target.value = validateNameInput(e.target.value);
+  });
+  nameInput.setAttribute('maxlength', '20');
+  nameInput.setAttribute('pattern', '[A-Za-z]+');
   
   // Level screen
   document.querySelectorAll('.level-card').forEach(card => {
@@ -90,13 +217,15 @@ function setupEventListeners() {
   document.getElementById('btn-spell').addEventListener('click', listenForSpelling);
   document.getElementById('btn-repeat').addEventListener('click', sayCurrentWord);
   
+  // Exit button
+  const exitBtn = document.getElementById('btn-exit');
+  if (exitBtn) {
+    exitBtn.addEventListener('click', exitToLogin);
+  }
+  
   // Finish screen
   document.getElementById('btn-again').addEventListener('click', () => startSet(state.currentSet));
-  document.getElementById('btn-home').addEventListener('click', () => {
-    state.studentName = '';
-    state.currentLevel = '';
-    showScreen('welcome');
-  });
+  document.getElementById('btn-next-student').addEventListener('click', goToNextStudent);
 }
 
 // Screen Management
@@ -107,8 +236,12 @@ function showScreen(screenName) {
 
 // Load Word Sets
 async function loadWordSets() {
+  if (!state.accessPin) {
+    console.log('No PIN, skipping word set load');
+    return;
+  }
   try {
-    const response = await fetch('/api/wordsets');
+    const response = await apiCall('/api/wordsets');
     if (response.ok) {
       state.allSets = await response.json();
       console.log(`Loaded ${state.allSets.length} word sets`);
@@ -119,6 +252,189 @@ async function loadWordSets() {
     console.log('Using example sets (server not available)');
     state.allSets = getExampleSets();
   }
+}
+
+// Go to next student (after finishing test)
+function goToNextStudent() {
+  // Reset student state but keep branch
+  state.studentName = '';
+  state.studentLevel = '';
+  state.currentLevel = '';
+  state.currentSet = null;
+  state.words = [];
+  state.results = [];
+  
+  // Clear input
+  document.getElementById('input-name').value = '';
+  hideHeardName();
+  
+  // Go back to name screen - NO auto listen
+  showScreen('name');
+  speak("Next student! Tap the button and say your name!");
+}
+
+// Exit test and return to kid login
+function exitToLogin() {
+  // Stop any ongoing speech/recognition
+  if ('speechSynthesis' in window) {
+    speechSynthesis.cancel();
+  }
+  if (recognitionInstance) {
+    try {
+      recognitionInstance.stop();
+    } catch (e) {}
+  }
+  isListeningForSpelling = false;
+  
+  // Reset student state but keep branch
+  state.studentName = '';
+  state.studentLevel = '';
+  state.currentLevel = '';
+  state.currentSet = null;
+  state.words = [];
+  state.results = [];
+  
+  // Clear input
+  document.getElementById('input-name').value = '';
+  hideHeardName();
+  
+  // Go back to name screen
+  showScreen('name');
+  speak("Tap the button and say your name!");
+}
+
+// Select branch
+function selectBranch(branch) {
+  state.currentBranch = branch;
+  
+  // Update header display
+  document.getElementById('branch-display').textContent = `${branch} ${BRANCHES[branch]}`;
+  document.getElementById('year-display').textContent = formatStudyYear(state.currentStudyYear);
+  
+  // Load students for this branch and year
+  loadStudents();
+  
+  // Go directly to kid login screen
+  showScreen('name');
+  hideHeardName();
+  speak(`Welcome! Tap the button and say your name!`);
+}
+
+// Load Students for current branch and studyYear
+async function loadStudents() {
+  if (!state.accessPin || !state.currentBranch) return;
+  try {
+    const response = await apiCall(`/api/students?branch=${state.currentBranch}&studyYear=${state.currentStudyYear}`);
+    if (response.ok) {
+      const data = await response.json();
+      state.allStudents = data.students || [];
+      console.log(`Loaded ${state.allStudents.length} students for ${state.currentBranch} ${state.currentStudyYear}`);
+    }
+  } catch (error) {
+    console.log('Could not load students');
+    state.allStudents = [];
+  }
+}
+
+// Save student to server
+async function saveStudent(name, level) {
+  try {
+    await apiCall('/api/students', {
+      method: 'POST',
+      body: JSON.stringify({ name, level })
+    });
+    console.log(`Student saved: ${name} (${level})`);
+  } catch (error) {
+    console.log('Could not save student');
+  }
+}
+
+// Track word attempt
+async function trackWordAttempt(word, correct, spoken) {
+  if (!state.studentName || !state.studentLevel || !state.currentBranch) return;
+  
+  try {
+    await apiCall('/api/word-attempts', {
+      method: 'POST',
+      body: JSON.stringify({
+        student: state.studentName,
+        branch: state.currentBranch,
+        studyYear: state.currentStudyYear,
+        level: state.studentLevel,
+        set: state.currentSet,
+        word: word,
+        correct: correct,
+        spoken: spoken
+      })
+    });
+    console.log(`Word attempt tracked: ${word} - ${correct ? 'correct' : 'failed'}`);
+  } catch (error) {
+    console.log('Could not track word attempt');
+  }
+}
+
+// ==================== CAMERA CAPTURE ====================
+
+// Capture photo after login for verification
+async function captureLoginPhoto(studentName) {
+  try {
+    // Request camera access
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'user', width: 640, height: 480 } 
+    });
+    
+    // Create video element
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.setAttribute('playsinline', true);
+    await video.play();
+    
+    // Wait a moment for camera to adjust
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Capture to canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Stop camera
+    stream.getTracks().forEach(track => track.stop());
+    
+    // Convert to base64
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    
+    // Send to server
+    await apiCall('/api/photos', {
+      method: 'POST',
+      body: JSON.stringify({
+        student: studentName,
+        branch: state.currentBranch,
+        image: imageData
+      })
+    });
+    
+    console.log('Login photo captured for:', studentName);
+    return true;
+  } catch (error) {
+    console.log('Could not capture photo:', error.message);
+    // Don't block login if camera fails
+    return false;
+  }
+}
+
+// Start login with photo capture
+async function completeLogin(studentName, studentLevel, callback) {
+  state.studentName = studentName;
+  state.studentLevel = studentLevel;
+  document.getElementById('student-name-display').textContent = studentName;
+  
+  // Capture photo (non-blocking)
+  speak(`Hi ${studentName}! Smile for the camera!`, async () => {
+    await captureLoginPhoto(studentName);
+    speak(`Let's practice ${studentLevel}!`, callback);
+  });
 }
 
 function getExampleSets() {
@@ -136,13 +452,19 @@ function getExampleSets() {
 
 function renderSetGrid(sets) {
   const grid = document.getElementById('set-grid');
-  grid.innerHTML = sets.map(set => `
+  // Sort by set number (1, 2, 3... not 10, 11, 1, 2...)
+  const sortedSets = [...sets].sort((a, b) => a.set - b.set);
+  grid.innerHTML = sortedSets.map(set => {
+    // Extract display number from name (e.g., "Starters Sem1 Set 5" → "5")
+    const match = set.name.match(/Set\s*(\d+)/i);
+    const displayNum = match ? match[1] : set.set;
+    return `
     <div class="set-card" data-set="${set.set}">
-      <div class="set-number">Set ${set.set}</div>
+      <div class="set-number">Set ${displayNum}</div>
       <div class="set-name">${set.name}</div>
       <div class="word-count">${set.wordCount} words</div>
     </div>
-  `).join('');
+  `;}).join('');
   
   // Add click listeners
   grid.querySelectorAll('.set-card').forEach(card => {
@@ -154,56 +476,160 @@ function renderSetGrid(sets) {
 }
 
 // Name Input
+// Show what was heard on screen
+function showHeardName(name, found) {
+  const display = document.getElementById('heard-display');
+  const nameEl = document.getElementById('heard-name');
+  
+  display.style.display = 'block';
+  nameEl.textContent = name || '???';
+  nameEl.className = 'heard-name ' + (found ? 'found' : 'not-found');
+}
+
+// Hide heard display
+function hideHeardName() {
+  document.getElementById('heard-display').style.display = 'none';
+}
+
 function listenForName() {
+  // Stop any ongoing speech first!
+  if ('speechSynthesis' in window) {
+    speechSynthesis.cancel();
+  }
+  
   const btn = document.getElementById('btn-say-name');
   btn.classList.add('listening');
   btn.textContent = '🎤 Listening...';
   
-  startSpeechRecognition((transcript) => {
+  // Small delay to ensure TTS is fully stopped
+  setTimeout(() => {
+    startSpeechRecognition((transcript) => {
     btn.classList.remove('listening');
-    btn.textContent = '🎤 Say Your Name';
+    btn.textContent = '🎤 Tap and Say Your Name!';
     
-    if (transcript) {
+    if (transcript && transcript.length > 1) {
       // Extract name from transcript
       const name = extractName(transcript);
-      if (name) {
-        document.getElementById('input-name').value = name;
-        speak(`Did you say ${name}? Tap the button to confirm!`);
+      if (name && name.length > 1) {
+        // Check if student exists
+        const existing = state.allStudents.find(s => s.name.toLowerCase() === name.toLowerCase());
+        
+        // Show what was heard
+        showHeardName(name, !!existing);
+        
+        if (existing) {
+          // Found! Login
+          completeLogin(existing.name, existing.level, () => {
+            hideHeardName();
+            document.getElementById('level-display').textContent = existing.level;
+            const filteredSets = filterSets(existing.level);
+            renderSetGrid(filteredSets.length > 0 ? filteredSets : state.allSets);
+            showScreen('set');
+          });
+        } else {
+          // Not found - NO auto retry, just show message
+          speak(`I don't know ${name}. Tap the button and try again!`);
+        }
+      } else {
+        // Show raw transcript if name extraction failed
+        showHeardName(transcript, false);
+        speak("I didn't understand. Tap the button and say your name clearly!");
       }
     } else {
-      speak("I didn't hear that. Try again or type your name!");
+      // Nothing heard - NO auto retry
+      speak("I didn't hear anything. Tap the button and say your name!");
     }
-  }, { timeout: 4000 });
+  }, { timeout: 5000 });
+  }, 200); // 200ms delay after stopping TTS
 }
 
 function extractName(transcript) {
-  // Simple name extraction - can be improved
-  const words = transcript.split(' ');
-  // Filter common words, get first capitalized word or first word
-  const name = words.find(w => /^[A-Z][a-z]+$/.test(w)) || words[0];
-  return name ? name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() : '';
+  // Extract name: A-Z only, max 20 characters, min 2 characters
+  const words = transcript.split(/[\s,.-]+/).filter(w => w.length >= 2);
+  
+  // Filter out common filler words
+  const fillerWords = ['the', 'my', 'name', 'is', 'am', 'hi', 'hello', 'im', "i'm"];
+  const filtered = words.filter(w => !fillerWords.includes(w.toLowerCase()));
+  
+  // Get first capitalized word or first valid word
+  const name = filtered.find(w => /^[A-Z][a-z]+$/.test(w)) || filtered[0];
+  if (!name || name.length < 2) return '';
+  
+  // Clean to A-Z only, limit to 20, min 2 chars
+  const cleaned = name.replace(/[^A-Za-z]/g, '').substring(0, 20);
+  if (cleaned.length < 2) return '';
+  
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
+}
+
+function validateNameInput(input) {
+  // Only allow A-Z, max 20 characters
+  const cleaned = input.replace(/[^A-Za-z]/g, '').substring(0, 20);
+  return cleaned;
 }
 
 function submitName() {
   const nameInput = document.getElementById('input-name');
-  const name = nameInput.value.trim();
+  // Validate: A-Z only, max 20
+  const name = validateNameInput(nameInput.value.trim());
   
-  if (name) {
-    state.studentName = name;
-    document.getElementById('student-name-display').textContent = name;
-    speak(`Hi ${name}! What's your level?`);
-    showScreen('level');
+  console.log('submitName:', name, 'students loaded:', state.allStudents.length);
+  
+  if (name && name.length > 0) {
+    // Check if student exists in the list
+    const existing = state.allStudents.find(s => s.name.toLowerCase() === name.toLowerCase());
+    console.log('Found student:', existing);
+    
+    if (existing) {
+      // Found! Login with photo capture
+      showHeardName(name, true);
+      completeLogin(existing.name, existing.level, () => {
+        hideHeardName();
+        document.getElementById('level-display').textContent = existing.level;
+        const filteredSets = filterSets(existing.level);
+        renderSetGrid(filteredSets.length > 0 ? filteredSets : state.allSets);
+        showScreen('set');
+      });
+    } else {
+      // Name not found - NO auto retry
+      showHeardName(name, false);
+      shake(nameInput);
+      speak(`I don't know ${name}. Check your spelling or tap the mic button!`);
+    }
   } else {
     shake(nameInput);
+    speak("Please enter your name!");
   }
 }
 
 // Level Selection
 function selectLevel(level) {
+  // Map display level to student level
+  const levelMap = {
+    'G1': 'Starters', 'G2': 'Starters',
+    'G3': 'Movers', 'G4': 'Movers',
+    'G5': 'Flyers', 'G6': 'Flyers',
+    'Starters': 'Starters',
+    'Movers': 'Movers',
+    'Flyers': 'Flyers',
+    'SuperFlyers': 'SuperFlyers'
+  };
+  
   state.currentLevel = level;
-  document.getElementById('level-display').textContent = level;
-  speak(`${level}! Now pick a set to practice.`);
-  renderSetGrid(state.allSets.filter(s => s.grade === level));
+  state.studentLevel = levelMap[level] || level;
+  
+  // Save new student
+  if (state.studentName && !state.allStudents.find(s => s.name.toLowerCase() === state.studentName.toLowerCase())) {
+    saveStudent(state.studentName, state.studentLevel);
+    state.allStudents.push({ name: state.studentName, level: state.studentLevel });
+  }
+  
+  document.getElementById('level-display').textContent = state.studentLevel;
+  speak(`${state.studentLevel}! Now pick a set to practice.`);
+  
+  // Filter sets by the student's level and semester
+  const filteredSets = filterSets(state.studentLevel);
+  renderSetGrid(filteredSets.length > 0 ? filteredSets : state.allSets);
   showScreen('set');
 }
 
@@ -212,6 +638,14 @@ async function startSet(setNumber) {
   state.currentSet = setNumber;
   state.currentWordIndex = 0;
   state.results = [];
+  
+  // Find display number from set name
+  const setInfo = state.allSets.find(s => s.set === setNumber);
+  let displayNum = setNumber;
+  if (setInfo && setInfo.name) {
+    const match = setInfo.name.match(/Set\s*(\d+)/i);
+    if (match) displayNum = parseInt(match[1]);
+  }
   
   try {
     // Fetch words for this set
@@ -227,7 +661,7 @@ async function startSet(setNumber) {
     state.words = getExampleWords(setNumber);
   }
   
-  speak(`Great! Set ${setNumber} has ${state.words.length} words. Let's start!`, () => {
+  speak(`Great! Set ${numberToWords(displayNum)} has ${numberToWords(state.words.length)} words. Let's start!`, () => {
     showScreen('spelling');
     showCurrentWord();
   });
@@ -255,14 +689,28 @@ function showCurrentWord() {
   const progressText = document.getElementById('progress-text');
   const lettersDisplay = document.getElementById('letters-display');
   
-  // Update display
-  wordDisplay.textContent = word.word;
+  // Reset attempt counter for new word
+  state.currentAttempt = 0;
+  
+  // Update display - HIDE the word initially (show ? marks, ignore spaces in display)
+  const wordNoSpaces = word.word.replace(/\s+/g, '');
+  wordDisplay.textContent = '?'.repeat(wordNoSpaces.length);
+  wordDisplay.dataset.word = word.word; // Store actual word
+  wordDisplay.classList.add('hidden-word');
+  wordDisplay.classList.remove('revealed-word');
   progressText.textContent = `Word ${state.currentWordIndex + 1} of ${state.words.length}`;
   progressFill.style.width = `${(state.currentWordIndex / state.words.length) * 100}%`;
   lettersDisplay.innerHTML = '';
   
   // Say the word
   sayCurrentWord();
+}
+
+function revealWord() {
+  const wordDisplay = document.getElementById('current-word');
+  wordDisplay.textContent = wordDisplay.dataset.word;
+  wordDisplay.classList.remove('hidden-word');
+  wordDisplay.classList.add('revealed-word');
 }
 
 function sayCurrentWord() {
@@ -275,51 +723,116 @@ function sayCurrentWord() {
   setTimeout(() => duck.classList.remove('speaking'), 2000);
 }
 
+let isListeningForSpelling = false;
+
 function listenForSpelling() {
+  // Prevent double-tap
+  if (isListeningForSpelling) {
+    console.log('Already listening, ignoring tap');
+    return;
+  }
+  
+  // Stop any ongoing speech first!
+  if ('speechSynthesis' in window) {
+    speechSynthesis.cancel();
+  }
+  
+  isListeningForSpelling = true;
   const btn = document.getElementById('btn-spell');
   btn.classList.add('listening');
   btn.textContent = '🎤 Listening...';
+  btn.disabled = true;
   
-  // Give kids more time to spell
-  startSpeechRecognition((transcript) => {
-    btn.classList.remove('listening');
-    btn.textContent = '🎤 Spell It!';
-    
-    if (transcript) {
-      checkSpelling(transcript);
-    } else {
-      // No speech detected - prompt to try again
-      speak("I didn't hear that. Tap the button and try again!");
-    }
-  }, { timeout: 8000, forSpelling: true });
+  // Longer delay to ensure TTS is fully stopped
+  setTimeout(() => {
+    startSpeechRecognition((transcript) => {
+      isListeningForSpelling = false;
+      btn.classList.remove('listening');
+      btn.textContent = '🎤 Spell It!';
+      btn.disabled = false;
+      
+      if (transcript) {
+        checkSpelling(transcript);
+      } else {
+        // No speech detected - NO auto action
+        speak("I didn't hear that. Tap the button and try again!");
+      }
+    }, { timeout: 8000, forSpelling: true });
+  }, 500); // 500ms delay after stopping TTS
 }
 
 function checkSpelling(transcript) {
-  const targetWord = state.words[state.currentWordIndex].word.toUpperCase();
-  const spokenLetters = extractLetters(transcript);
+  // Remove spaces from target word for comparison
+  const targetWord = state.words[state.currentWordIndex].word.toUpperCase().replace(/\s+/g, '');
+  const maxLength = targetWord.length;
   
-  // Display letters
+  // Extract letters and limit to word length
+  let spokenLetters = extractLetters(transcript);
+  if (spokenLetters.length > maxLength) {
+    spokenLetters = spokenLetters.slice(0, maxLength);
+  }
+  
+  // Display letters (compare against word without spaces)
   displayLetters(spokenLetters, targetWord.split(''));
   
-  // Check if correct
+  // Check if correct (ignore spaces)
   const isCorrect = spokenLetters.join('') === targetWord;
   
-  // Record result
-  state.results.push({
-    word: state.words[state.currentWordIndex].word,
-    correct: isCorrect,
-    spoken: spokenLetters.join(''),
-  });
+  state.currentAttempt++;
   
-  // Show feedback
-  showFeedback(isCorrect, () => {
-    if (state.currentWordIndex < state.words.length - 1) {
-      state.currentWordIndex++;
-      showCurrentWord();
+  if (isCorrect) {
+    // Track successful attempt
+    trackWordAttempt(state.words[state.currentWordIndex].word, true, spokenLetters.join(''));
+    
+    // Record correct result
+    state.results.push({
+      word: state.words[state.currentWordIndex].word,
+      correct: true,
+      spoken: spokenLetters.join(''),
+      attempts: state.currentAttempt,
+    });
+    
+    // Show success feedback and move to next word
+    showFeedback(true, () => {
+      if (state.currentWordIndex < state.words.length - 1) {
+        state.currentWordIndex++;
+        showCurrentWord();
+      } else {
+        finishSet();
+      }
+    });
+  } else {
+    // Track failed attempt
+    trackWordAttempt(state.words[state.currentWordIndex].word, false, spokenLetters.join(''));
+    
+    // Wrong answer
+    if (state.currentAttempt < 3) {
+      // Give another try (up to 3 attempts)
+      const attemptsLeft = 3 - state.currentAttempt;
+      speak(`Not quite! You have ${numberToWords(attemptsLeft)} more ${attemptsLeft === 1 ? 'try' : 'tries'}. Tap the button to try again!`);
     } else {
-      finishSet();
+      // 3 attempts used, record and move on
+      state.results.push({
+        word: state.words[state.currentWordIndex].word,
+        correct: false,
+        spoken: spokenLetters.join(''),
+        attempts: state.currentAttempt,
+      });
+      
+      // Reveal the word and show encouragement
+      revealWord();
+      speak(`The word is ${state.words[state.currentWordIndex].word}. Good try! Let's move on.`, () => {
+        setTimeout(() => {
+          if (state.currentWordIndex < state.words.length - 1) {
+            state.currentWordIndex++;
+            showCurrentWord();
+          } else {
+            finishSet();
+          }
+        }, 1500);
+      });
     }
-  });
+  }
 }
 
 function extractLetters(transcript) {
@@ -417,18 +930,19 @@ function displayLetters(spoken, target) {
 
 function showFeedback(isCorrect, callback) {
   const container = document.getElementById('feedback-container');
+  const wordDisplay = document.getElementById('feedback-word');
   const emoji = document.getElementById('feedback-emoji');
   const text = document.getElementById('feedback-text');
   
-  if (isCorrect) {
-    emoji.textContent = ['🎉', '⭐', '🌟', '👏', '🦆'][Math.floor(Math.random() * 5)];
-    text.textContent = encouragement.correct[Math.floor(Math.random() * encouragement.correct.length)];
-    container.classList.remove('incorrect');
-  } else {
-    emoji.textContent = ['💪', '🌟', '🦆'][Math.floor(Math.random() * 3)];
-    text.textContent = encouragement.tryAgain[Math.floor(Math.random() * encouragement.tryAgain.length)];
-    container.classList.add('incorrect');
-  }
+  // Show the correct word in big letters!
+  const currentWord = state.words[state.currentWordIndex].word;
+  wordDisplay.textContent = currentWord.toUpperCase();
+  
+  // Reveal the word on spelling screen too
+  revealWord();
+  emoji.textContent = ['🎉', '⭐', '🌟', '👏', '🦆'][Math.floor(Math.random() * 5)];
+  text.textContent = encouragement.correct[Math.floor(Math.random() * encouragement.correct.length)];
+  container.classList.remove('incorrect');
   
   speak(text.textContent.replace(/[🎉⭐🌟👏🦆💪]/g, ''));
   showScreen('feedback');
@@ -481,9 +995,8 @@ async function saveResults(correct, total) {
   };
   
   try {
-    await fetch('/api/results', {
+    await apiCall('/api/results', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(result),
     });
     console.log('Results saved:', result);
@@ -605,15 +1118,20 @@ let useServerTTS = false; // Set to true if server TTS is available
 // Initialize voices
 function initVoices() {
   const voices = speechSynthesis.getVoices();
+  console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
   
   // Preferred voices (natural sounding) in order of preference
+  // Chrome on Mac: look for "Google" voices or macOS system voices
   const preferredNames = [
-    'Samantha',      // macOS/iOS - very natural
-    'Karen',         // macOS - Australian, clear
-    'Daniel',        // macOS - British, clear
-    'Google US English', // Chrome
-    'Microsoft Zira', // Windows
-    'Alex',          // macOS
+    'Samantha',           // macOS/iOS - very natural (Safari)
+    'Google US English',  // Chrome - decent quality
+    'Google UK English Female', // Chrome - good for kids
+    'Karen',              // macOS - Australian, clear
+    'Moira',              // macOS - Irish, friendly
+    'Tessa',              // macOS - South African
+    'Daniel',             // macOS - British, clear
+    'Microsoft Zira',     // Windows
+    'Alex',               // macOS
   ];
   
   for (const name of preferredNames) {
@@ -625,9 +1143,11 @@ function initVoices() {
     }
   }
   
-  // If no preferred voice, try to find any English voice
+  // If no preferred voice, try to find any female English voice (usually clearer for kids)
   if (!preferredVoice) {
-    preferredVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+    preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female')) 
+      || voices.find(v => v.lang.startsWith('en')) 
+      || voices[0];
     console.log('Using fallback voice:', preferredVoice?.name);
   }
 }
@@ -655,11 +1175,10 @@ checkServerTTS();
 
 async function speak(text, callback) {
   // Try server TTS first (AI voice)
-  if (useServerTTS) {
+  if (useServerTTS && state.accessPin) {
     try {
-      const response = await fetch('/api/tts', {
+      const response = await apiCall('/api/tts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text })
       });
       
@@ -701,6 +1220,18 @@ async function speak(text, callback) {
     console.log('Speaking:', text);
     if (callback) setTimeout(callback, 1000);
   }
+}
+
+// Number to English words (for TTS to avoid Chinese pronunciation)
+function numberToWords(n) {
+  const ones = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+                'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 
+                'seventeen', 'eighteen', 'nineteen'];
+  const tens = ['', '', 'twenty', 'thirty'];
+  
+  if (n < 20) return ones[n];
+  if (n < 40) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+  return String(n); // Fallback for larger numbers
 }
 
 // Utility

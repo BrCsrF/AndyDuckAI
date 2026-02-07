@@ -21,7 +21,7 @@
 }
 
 body {
-  font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
+  font-family: 'Nunito', 'Arial Rounded MT Bold', 'Helvetica Rounded', Arial, sans-serif;
   background: linear-gradient(135deg, var(--bg-light) 0%, var(--bg-green) 100%);
   min-height: 100vh;
   overflow: hidden;
@@ -75,16 +75,13 @@ body {
 }
 
 .duck-img {
-  width: 180px;
-  height: 180px;
+  width: 200px;
+  height: 200px;
   object-fit: contain;
   animation: float 3s ease-in-out infinite;
   filter: drop-shadow(0 10px 20px rgba(0,0,0,0.1));
   cursor: pointer;
   transition: transform 0.3s ease;
-  border-radius: 50%;
-  background: var(--white);
-  padding: 10px;
 }
 
 .duck:hover, .duck-img:hover {
@@ -173,6 +170,23 @@ body {
 
 .btn-primary:active {
   transform: translateY(0);
+}
+
+.btn-primary.btn-large {
+  padding: 30px 60px;
+  font-size: 36px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  animation: none;
 }
 
 .btn-secondary {
@@ -407,6 +421,25 @@ body {
   white-space: nowrap;
 }
 
+.btn-exit {
+  background: rgba(231, 76, 60, 0.9);
+  color: var(--white);
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 25px;
+  cursor: pointer;
+  margin-left: 20px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+}
+
+.btn-exit:hover {
+  background: #C0392B;
+  transform: scale(1.05);
+}
+
 /* Spelling Area */
 .spelling-area {
   display: flex;
@@ -454,10 +487,28 @@ body {
 }
 
 .current-word {
-  font-size: 48px;
+  font-size: 72px;
   font-weight: bold;
   color: var(--primary-orange);
-  letter-spacing: 3px;
+  letter-spacing: 8px;
+  font-family: 'Arial Rounded MT Bold', 'Helvetica Rounded', 'Arial', sans-serif;
+  text-transform: uppercase;
+}
+
+.current-word.hidden-word {
+  color: var(--primary-blue);
+  letter-spacing: 12px;
+}
+
+.current-word.revealed-word {
+  color: var(--primary-green);
+  animation: revealPop 0.5s ease;
+}
+
+@keyframes revealPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 .hint-text {
@@ -473,13 +524,23 @@ body {
   animation: zoomIn 0.5s ease;
 }
 
-.feedback-emoji {
-  font-size: 150px;
+.feedback-word {
+  font-size: 72px;
+  font-weight: bold;
+  color: var(--primary-orange);
+  text-transform: uppercase;
+  letter-spacing: 8px;
   margin-bottom: 20px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+.feedback-emoji {
+  font-size: 120px;
+  margin-bottom: 15px;
 }
 
 .feedback-text {
-  font-size: 48px;
+  font-size: 36px;
   font-weight: bold;
   color: var(--primary-green);
 }
@@ -575,5 +636,205 @@ body {
   
   .speech-bubble.large p {
     font-size: 32px;
+  }
+}
+
+/* PIN Input Styles */
+.pin-input {
+  text-align: center;
+  font-size: 2rem;
+  letter-spacing: 0.5rem;
+  font-family: monospace;
+}
+
+.error-text {
+  margin-top: 1rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+/* Student List */
+.student-list-container {
+  width: 100%;
+  max-width: 500px;
+  margin-bottom: 20px;
+}
+
+.section-label {
+  font-size: 18px;
+  color: var(--text-light);
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.student-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.student-btn {
+  background: var(--white);
+  border: 3px solid var(--primary-yellow);
+  border-radius: 30px;
+  padding: 12px 24px;
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.student-btn:hover {
+  background: var(--primary-yellow);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+.student-btn .student-level {
+  font-size: 14px;
+  color: var(--primary-blue);
+  font-weight: normal;
+}
+
+.no-students {
+  color: var(--text-light);
+  font-style: italic;
+  text-align: center;
+}
+
+/* Heard Display */
+.heard-display {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 20px 40px;
+  margin-bottom: 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  animation: fadeIn 0.3s ease;
+}
+
+.heard-label {
+  font-size: 16px;
+  color: var(--text-light);
+  margin-bottom: 5px;
+}
+
+.heard-name {
+  font-size: 36px;
+  font-weight: bold;
+  color: var(--primary-blue);
+  text-transform: capitalize;
+}
+
+.heard-name.not-found {
+  color: var(--primary-orange);
+}
+
+.heard-name.found {
+  color: var(--primary-green);
+}
+
+/* Year Selection */
+.year-selector {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.year-btn {
+  padding: 15px 30px;
+  font-size: 20px;
+  font-weight: bold;
+  background: var(--white);
+  border: 3px solid var(--primary-yellow);
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.year-btn:hover {
+  background: var(--primary-yellow);
+  color: var(--white);
+}
+
+.year-btn.active {
+  background: var(--primary-orange);
+  border-color: var(--primary-orange);
+  color: var(--white);
+}
+
+/* Branch Selection */
+.branch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  max-width: 500px;
+  width: 100%;
+  padding: 20px;
+}
+
+.branch-card {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 25px 15px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+  border: 4px solid transparent;
+}
+
+.branch-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  border-color: var(--primary-orange);
+  box-shadow: var(--shadow-hover);
+}
+
+.branch-card .branch-code {
+  font-size: 32px;
+  font-weight: bold;
+  color: var(--primary-blue);
+  margin-bottom: 8px;
+}
+
+.branch-card .branch-name {
+  font-size: 14px;
+  color: var(--text-dark);
+}
+
+/* Branch Header (shown at top of kid login screen) */
+.branch-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, var(--primary-blue), #6C5CE7);
+  color: white;
+  padding: 15px 30px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  font-size: 20px;
+  font-weight: bold;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+
+.branch-header span {
+  padding: 5px 15px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 20px;
+}
+
+@media (max-width: 480px) {
+  .branch-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
